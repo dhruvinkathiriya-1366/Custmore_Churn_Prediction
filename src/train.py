@@ -1,22 +1,36 @@
-# Training Script
-# Script to train the churn prediction model
-
-from data_preprocessing import load_data, preprocess_data
-from model import ChurnModel
+from data_ingestion import load_data,clean_data,split_data,fetch_column
+from data_transform import Transform_data
+from model import Model
+from evaluate import evaluate_model
+from sklearn.pipeline import Pipeline
 
 def main():
-    """Main training function"""
-    # Load data
-    train_data = load_data('../data/raw/train.csv')
     
-    # Preprocess data
-    X_train, y_train = preprocess_data(train_data)
+    data_df = load_data()
+    data_clean_df=clean_data(data_df)
+    x_train,x_test,y_train,y_test=split_data(data_clean_df)
+    ordinal_col,nominal_col,robust_col,standard_col=fetch_column(x_train)
+    transformer=Transform_data(ordinal_col,nominal_col,robust_col,standard_col)
+    model=Model()
     
-    # Train model
-    model = ChurnModel()
-    model.train(X_train, y_train)
+    pipeline=Pipeline([
+        ('transformer',transformer),
+        ('model',model)
+    ])
+    pipeline.fit(x_train,y_train)
+    test_pred=pipeline.predict(x_test) 
+    train_pred=pipeline.predict(x_train)
     
-    print("Model training completed!")
+    
+    metrics=evaluate_model(y_train,train_pred)
+    print(f"accuracy:{metrics['accuracy']}")
+    print(f"precision:{metrics['precision']}")
+    print(f"recall:{metrics['recall']}")
+    print(f"F1_score:{metrics['f1_score']}")
+    print(f"confustion_metrics:{metrics['confusion_metrics']}")
+    
 
+    
 if __name__ == "__main__":
     main()
+
