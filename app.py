@@ -1,41 +1,11 @@
-"""
-Customer Churn Prediction Dashboard
-------------------------------------
-An attractive, non-technical-friendly Streamlit app that:
-  1. Loads a trained churn model (joblib/pickle)
-  2. Loads a labeled test dataset (with the TRUE churn outcome)
-  3. Shows a pie chart of Churned vs Stayed
-  4. Shows a plain-English confusion matrix
-  5. Shows Accuracy / Precision / Recall / F1 as big KPI cards
-  6. Lets a non-tech user upload their own CSV or fill a form to predict a single customer
-
-HOW TO USE (matches a project structure like):
-    models/model.pkl
-    data/processed/x_test.csv
-    data/processed/y_test.csv
-    app.py
-
-  1. Make sure model.pkl was saved with joblib.dump(model, "models/model.pkl")
-  2. Make sure x_test.csv has the feature columns and y_test.csv has the true labels
-     (one column, values like 0/1 or Yes/No).
-  3. Check MODEL_PATH, X_TEST_PATH, Y_TEST_PATH below match your folder layout.
-  4. Run from the project root:  streamlit run app.py
-"""
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
 import plotly.express as px
 import plotly.graph_objects as go
-from sklearn.metrics import (
-    accuracy_score, precision_score, recall_score,
-    f1_score, confusion_matrix
-)
+from sklearn.metrics import accuracy_score, precision_score, recall_score,f1_score, confusion_matrix
 
-# ============================================================
-# CONFIG — EDIT THESE TO MATCH YOUR PROJECT
-# ============================================================
 MODEL_PATH = "D:/study/Project/Custmore_churn_prediction/models/model.pkl"
 X_TEST_PATH = "D:/study/Project/Custmore_churn_prediction/data/processed/x_test.csv"
 Y_TEST_PATH = "D:/study/Project/Custmore_churn_prediction/data/processed/y_test.csv"
@@ -51,9 +21,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ============================================================
-# STYLE — dark navy + gold theme
-# ============================================================
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
@@ -153,9 +120,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ============================================================
-# HERO HEADER
-# ============================================================
+
 st.markdown("""
 <div class="hero">
     <h1>📊 Customer Churn Prediction Dashboard</h1>
@@ -163,9 +128,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ============================================================
-# LOAD MODEL + DATA
-# ============================================================
 @st.cache_resource
 def load_model(path):
     return joblib.load(path)
@@ -230,9 +192,6 @@ except Exception as e:
     st.error(f"⚠️ Model prediction failed: {e}")
     st.stop()
 
-# ============================================================
-# METRICS
-# ============================================================
 acc = accuracy_score(y_true, y_pred)
 prec = precision_score(y_true, y_pred, zero_division=0)
 rec = recall_score(y_true, y_pred, zero_division=0)
@@ -240,9 +199,6 @@ f1 = f1_score(y_true, y_pred, zero_division=0)
 cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
 tn, fp, fn, tp = cm.ravel()
 
-# ============================================================
-# KPI ROW
-# ============================================================
 st.markdown('<div class="section-title">🔑 Model Performance at a Glance</div>', unsafe_allow_html=True)
 
 k1, k2, k3, k4 = st.columns(4)
@@ -264,9 +220,6 @@ for col, label, value, caption in kpis:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ============================================================
-# PIE CHART — Churned vs Stayed (actual distribution)
-# ============================================================
 left, right = st.columns([1, 1])
 
 with left:
@@ -276,7 +229,7 @@ with left:
         names=churn_counts.index,
         values=churn_counts.values,
         color=churn_counts.index,
-        color_discrete_map={"Churned": "#e05252", "Stayed": "#d4af37"},
+        color_discrete_map={"Churned": "#800505", "Stayed": "#00680b"},
         hole=0.45,
     )
     fig_pie.update_traces(
@@ -305,9 +258,6 @@ with left:
     </div>
     """, unsafe_allow_html=True)
 
-# ============================================================
-# CONFUSION MATRIX — plain English
-# ============================================================
 with right:
     st.markdown('<div class="section-title">🎯 Was the Model Right?</div>', unsafe_allow_html=True)
 
@@ -347,9 +297,6 @@ with right:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ============================================================
-# RECALL — plain-English callout
-# ============================================================
 st.markdown('<div class="section-title">📌 Why Recall Matters Here</div>', unsafe_allow_html=True)
 st.markdown(f"""
 <div class="explain-box">
