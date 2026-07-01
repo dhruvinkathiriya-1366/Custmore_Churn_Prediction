@@ -27,10 +27,9 @@ def main():
     print(f"precision:{metrics['precision']}")
     print(f"recall:{metrics['recall']}")
     print(f"F1_score:{metrics['f1_score']}")
-    print(f"confustion_metrics:{metrics['confusion_metrics']}")
-    
-
+    print(f"confusion_metrics:{metrics['confusion_metrics']}")
     
 if __name__ == "__main__":
     main()
+    
 
