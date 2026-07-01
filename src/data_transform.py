@@ -40,5 +40,3 @@ if __name__ =="__main__":
     ordinal_col,nominal_col,robust_col,standard_col=fetch_column(x_train)
     transformer=Transform_data(ordinal_col,nominal_col,robust_col,standard_col)
     x_train_tran = transformer.fit_transform(x_train)
-    
-            
