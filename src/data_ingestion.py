@@ -18,7 +18,10 @@ def clean_data(data_df):
   
 def split_data(data_clean_df):
      x=data_clean_df.drop(columns=['ChurnLabel'])
-     y=data_clean_df['ChurnLabel']
+     y=data_clean_df['ChurnLabel'].map({
+    'Yes':1,
+    'No':0
+    })
      x_train,x_test,y_train,y_test=train_test_split(x,y,test_size=0.2,random_state=42)
      
      return x_train,x_test,y_train,y_test
