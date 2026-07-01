@@ -9,14 +9,17 @@ An attractive, non-technical-friendly Streamlit app that:
   5. Shows Accuracy / Precision / Recall / F1 as big KPI cards
   6. Lets a non-tech user upload their own CSV or fill a form to predict a single customer
 
-HOW TO USE:
-  1. Put your saved model file next to this script and name it "model.pkl"
-     (joblib.dump(model, "model.pkl"))
-  2. Put a labeled test CSV next to this script named "test_data.csv".
-     It must contain all the feature columns your model was trained on,
-     PLUS a column with the true label. Update TARGET_COLUMN below to match.
-  3. Update FEATURE_COLUMNS below to match your model's expected input columns.
-  4. Run:  streamlit run app.py
+HOW TO USE (matches a project structure like):
+    models/model.pkl
+    data/processed/x_test.csv
+    data/processed/y_test.csv
+    app.py
+
+  1. Make sure model.pkl was saved with joblib.dump(model, "models/model.pkl")
+  2. Make sure x_test.csv has the feature columns and y_test.csv has the true labels
+     (one column, values like 0/1 or Yes/No).
+  3. Check MODEL_PATH, X_TEST_PATH, Y_TEST_PATH below match your folder layout.
+  4. Run from the project root:  streamlit run app.py
 """
 
 import streamlit as st
@@ -33,12 +36,12 @@ from sklearn.metrics import (
 # ============================================================
 # CONFIG — EDIT THESE TO MATCH YOUR PROJECT
 # ============================================================
-MODEL_PATH = "model.pkl"
-TEST_DATA_PATH = "test_data.csv"
-TARGET_COLUMN = "Churn"          # column in test_data.csv with the true answer (Yes/No or 1/0)
-POSITIVE_LABEL = 1               # value in TARGET_COLUMN that means "customer churned"
-# List every feature column your model expects, IN ORDER, excluding the target.
-# Leave as None to auto-use every column except TARGET_COLUMN.
+MODEL_PATH = "D:/study/Project/Custmore_churn_prediction/models/model.pkl"
+X_TEST_PATH = "D:/study/Project/Custmore_churn_prediction/data/processed/x_test.csv"
+Y_TEST_PATH = "D:/study/Project/Custmore_churn_prediction/data/processed/y_test.csv"
+POSITIVE_LABEL = 1               # value in y_test that means "customer churned" (e.g. 1 or "Yes")
+# List every feature column your model expects, IN ORDER.
+# Leave as None to auto-use every column in x_test.csv.
 FEATURE_COLUMNS = None
 
 st.set_page_config(
@@ -172,7 +175,8 @@ def load_test_data(path):
     return pd.read_csv(path)
 
 model = None
-test_df = None
+X_test = None
+y_true_raw = None
 load_error = None
 
 try:
@@ -181,35 +185,35 @@ except Exception as e:
     load_error = f"Couldn't load model from '{MODEL_PATH}': {e}"
 
 try:
-    test_df = load_test_data(TEST_DATA_PATH)
+    X_test = load_test_data(X_TEST_PATH)
 except Exception as e:
     load_error = (load_error + " | " if load_error else "") + \
-        f"Couldn't load test data from '{TEST_DATA_PATH}': {e}"
+        f"Couldn't load features from '{X_TEST_PATH}': {e}"
+
+try:
+    y_df = load_test_data(Y_TEST_PATH)
+    # y_test.csv may be a single unnamed column or a named column — grab the first column either way
+    y_true_raw = y_df.iloc[:, 0]
+except Exception as e:
+    load_error = (load_error + " | " if load_error else "") + \
+        f"Couldn't load labels from '{Y_TEST_PATH}': {e}"
 
 if load_error:
     st.error(
         "⚠️ " + load_error +
-        "\n\nMake sure `model.pkl` and `test_data.csv` are in the same folder as app.py, "
-        "or edit MODEL_PATH / TEST_DATA_PATH at the top of the script."
+        "\n\nMake sure the paths at the top of app.py match your project folder "
+        "(MODEL_PATH, X_TEST_PATH, Y_TEST_PATH)."
     )
     st.stop()
 
 # Resolve feature columns
-feature_cols = FEATURE_COLUMNS if FEATURE_COLUMNS else [
-    c for c in test_df.columns if c != TARGET_COLUMN
-]
-
-missing_cols = [c for c in feature_cols if c not in test_df.columns]
-if TARGET_COLUMN not in test_df.columns:
-    st.error(f"⚠️ Target column '{TARGET_COLUMN}' not found in test_data.csv. "
-              f"Available columns: {list(test_df.columns)}")
-    st.stop()
+feature_cols = FEATURE_COLUMNS if FEATURE_COLUMNS else list(X_test.columns)
+missing_cols = [c for c in feature_cols if c not in X_test.columns]
 if missing_cols:
-    st.error(f"⚠️ These expected feature columns are missing from test_data.csv: {missing_cols}")
+    st.error(f"⚠️ These expected feature columns are missing from x_test.csv: {missing_cols}")
     st.stop()
 
-X_test = test_df[feature_cols]
-y_true_raw = test_df[TARGET_COLUMN]
+X_test = X_test[feature_cols]
 
 # Normalize true labels to 0/1 if they're Yes/No style
 if y_true_raw.dtype == object:
@@ -359,41 +363,6 @@ at-risk customers are missed, which is usually the priority in churn prevention.
 """, unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
-
-# ============================================================
-# SIDEBAR — single customer prediction
-# ============================================================
-st.sidebar.markdown("## 🔮 Predict a Single Customer")
-st.sidebar.caption("Fill in details below to check if a customer is likely to churn.")
-
-with st.sidebar.form("predict_form"):
-    input_data = {}
-    for col in feature_cols:
-        col_dtype = X_test[col].dtype
-        if col_dtype == object or X_test[col].nunique() <= 10:
-            options = sorted(X_test[col].dropna().unique().tolist())
-            input_data[col] = st.selectbox(col, options)
-        else:
-            input_data[col] = st.number_input(
-                col,
-                value=float(X_test[col].median()),
-            )
-    submitted = st.form_submit_button("Predict")
-
-if submitted:
-    input_df = pd.DataFrame([input_data])[feature_cols]
-    pred = model.predict(input_df)[0]
-    is_churn = pred in [1, "Yes", "yes", True]
-
-    try:
-        proba = model.predict_proba(input_df)[0][1]
-    except Exception:
-        proba = None
-
-    if is_churn:
-        st.sidebar.error(f"⚠️ Likely to CHURN" + (f" ({proba*100:.1f}% risk)" if proba is not None else ""))
-    else:
-        st.sidebar.success(f"✅ Likely to STAY" + (f" ({(1-proba)*100:.1f}% confidence)" if proba is not None else ""))
 
 st.markdown("""
 <div style="text-align:center; color:#8b93ac; font-size:0.85rem; margin-top:30px;">
